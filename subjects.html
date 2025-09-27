@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Subjects</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Add Subject</h1>
+  <form method="POST">
+    <input type="text" name="name" placeholder="Subject Name" required>
+    <button type="submit">Add</button>
+  </form>
+
+  <h2>All Subjects</h2>
+  <table>
+    <tr><th>ID</th><th>Name</th></tr>
+    {% for s in subjects %}
+    <tr><td>{{s[0]}}</td><td>{{s[1]}}</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

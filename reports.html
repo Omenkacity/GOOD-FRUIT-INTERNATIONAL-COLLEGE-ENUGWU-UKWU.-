@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Reports</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    function printDiv(divId) {
+      var content = document.getElementById(divId).innerHTML;
+      var win = window.open('', '', 'width=900,height=650');
+      win.document.write('<html><head><title>Print Result</title></head><body>');
+      win.document.write(content);
+      win.document.write('</body></html>');
+      win.document.close();
+      win.print();
+    }
+  </script>
+</head>
+<body>
+  <h1>Reports</h1>
+  <form method="GET" action="/reports">
+    <label>Class:
+      <select name="class">
+        <option value="">-- All Classes --</option>
+        <option>JS1</option><option>JS2</option><option>JS3</option>
+        <option>SS1</option><option>SS2</option><option>SS3</option>
+      </select>
+    </label>
+    <label>Student ID:
+      <input type="text" name="student" placeholder="Leave blank for all">
+    </label>
+    <button type="submit">View Report</button>
+  </form>
+
+  {% if reports %}
+  <div id="reportSection">
+    <h2>Result Report</h2>
+    <table>
+      <tr>
+        <th>Student</th><th>Class</th><th>Subject</th>
+        <th>CA</th><th>Exam</th><th>Total</th><th>Grade</th><th>Remark</th>
+      </tr>
+      {% for r in reports %}
+      <tr>
+        <td>{{r[1]}}</td><td>{{r[2]}}</td><td>{{r[3]}}</td>
+        <td>{{r[4]}}</td><td>{{r[5]}}</td><td>{{r[6]}}</td>
+        <td>{{r[7]}}</td><td>{{r[8]}}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h3>Summary</h3>
+    <p><strong>Total Students:</strong> {{summary.total_students}}</p>
+    <p><strong>Average Score:</strong> {{summary.average}}</p>
+    <p><strong>Highest Score:</strong> {{summary.highest}}</p>
+    <p><strong>Lowest Score:</strong> {{summary.lowest}}</p>
+
+    <button onclick="printDiv('reportSection')">Print This Report</button>
+  </div>
+  {% endif %}
+</body>
+</html>

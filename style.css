@@ -1,0 +1,15 @@
+body { font-family: Arial, sans-serif; margin: 20px; }
+h1, h2 { color: #333; }
+form { margin-bottom: 20px; }
+input, select, button { margin: 5px; padding: 8px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+th { background: #eee; }
+.sidebar { position: fixed; left: 0; top: 0; width: 200px; height: 100%; background: #333; color: white; padding: 20px; }
+.sidebar h2 { color: #fff; }
+.sidebar ul { list-style: none; padding: 0; }
+.sidebar ul li { margin: 15px 0; }
+.sidebar ul li a { color: white; text-decoration: none; }
+.content { margin-left: 220px; padding: 20px; }
+.dropdown li { cursor: pointer; margin: 10px; background: #eee; padding: 10px; border-radius: 5px; }
+.dropdown li span { display: none; color: #666; }
