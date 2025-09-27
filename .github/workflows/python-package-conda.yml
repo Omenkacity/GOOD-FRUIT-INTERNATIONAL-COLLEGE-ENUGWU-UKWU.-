@@ -1,0 +1,193 @@
+from flask import Flask, render_template_string, request
+import sqlite3
+
+app = Flask(__name__)
+
+# ---------- Database Setup ----------
+def init_db():
+    conn = sqlite3.connect("school.db")
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS students(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT, class TEXT
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS subjects(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT
+    )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS results(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        student_id INTEGER,
+        subject_id INTEGER,
+        ca INTEGER, exam INTEGER, total INTEGER,
+        grade TEXT, remark TEXT,
+        FOREIGN KEY(student_id) REFERENCES students(id),
+        FOREIGN KEY(subject_id) REFERENCES subjects(id)
+    )""")
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# ---------- Grade Calculator ----------
+def calculate_result(ca, exam):
+    total = ca + exam
+    if total >= 70: grade, remark = "A", "Excellent"
+    elif total >= 60: grade, remark = "B", "Very Good"
+    elif total >= 50: grade, remark = "C", "Good"
+    elif total >= 45: grade, remark = "D", "Fair"
+    elif total >= 40: grade, remark = "E", "Pass"
+    else: grade, remark = "F", "Fail"
+    return total, grade, remark
+
+# ---------- Single HTML Template ----------
+html_template = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>School Result Management</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f6f9; margin:0; }
+    header { background:#2c3e50; color:white; padding:1rem; text-align:center; }
+    nav { background:#34495e; padding:1rem; display:flex; gap:1rem; }
+    nav a { color:white; text-decoration:none; font-weight:bold; }
+    .container { padding:2rem; }
+    table { width:100%; border-collapse:collapse; margin-top:1rem; }
+    th, td { border:1px solid #ddd; padding:8px; text-align:center; }
+    th { background:#2c3e50; color:white; }
+    form { margin-top:1rem; padding:1rem; background:white; border-radius:8px; }
+    input, select { padding:0.5rem; margin:0.5rem; }
+    .btn { background:#2980b9; color:white; padding:0.5rem 1rem; border:none; border-radius:4px; cursor:pointer; }
+    .btn:hover { background:#3498db; }
+    .summary { background:white; padding:1rem; border-radius:8px; margin-top:1rem; }
+    .print-btn { background:#27ae60; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>School Result Management System</h1>
+    <p>Skew Protection: Disabled | Cold Start Prevention: Disabled</p>
+  </header>
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/students">Students</a>
+    <a href="/subjects">Subjects</a>
+    <a href="/results">Results</a>
+    <a href="/reports">Reports</a>
+    <a href="/errors">Errors</a>
+  </nav>
+  <div class="container">
+    {{ content|safe }}
+  </div>
+</body>
+</html>
+"""
+
+# ---------- Routes ----------
+@app.route("/")
+def home():
+    return render_template_string(html_template, content="<h2>Welcome! Use the menu to navigate.</h2>")
+
+@app.route("/students", methods=["GET","POST"])
+def students():
+    conn = sqlite3.connect("school.db")
+    c = conn.cursor()
+    if request.method == "POST":
+        c.execute("INSERT INTO students(name,class) VALUES(?,?)", (request.form["name"], request.form["class"]))
+        conn.commit()
+    c.execute("SELECT * FROM students")
+    students = c.fetchall()
+    conn.close()
+    table = "<h2>Students</h2><form method='post'>Name:<input name='name'> Class:<input name='class'><button class='btn'>Add</button></form>"
+    table += "<table><tr><th>ID</th><th>Name</th><th>Class</th></tr>"
+    for s in students:
+        table += f"<tr><td>{s[0]}</td><td>{s[1]}</td><td>{s[2]}</td></tr>"
+    table += "</table>"
+    return render_template_string(html_template, content=table)
+
+@app.route("/subjects", methods=["GET","POST"])
+def subjects():
+    conn = sqlite3.connect("school.db")
+    c = conn.cursor()
+    if request.method == "POST":
+        c.execute("INSERT INTO subjects(name) VALUES(?)", (request.form["name"],))
+        conn.commit()
+    c.execute("SELECT * FROM subjects")
+    subjects = c.fetchall()
+    conn.close()
+    table = "<h2>Subjects</h2><form method='post'>Name:<input name='name'><button class='btn'>Add</button></form>"
+    table += "<table><tr><th>ID</th><th>Name</th></tr>"
+    for s in subjects:
+        table += f"<tr><td>{s[0]}</td><td>{s[1]}</td></tr>"
+    table += "</table>"
+    return render_template_string(html_template, content=table)
+
+@app.route("/results", methods=["GET","POST"])
+def results():
+    conn = sqlite3.connect("school.db")
+    c = conn.cursor()
+    if request.method == "POST":
+        ca, exam = int(request.form["ca"]), int(request.form["exam"])
+        total, grade, remark = calculate_result(ca, exam)
+        c.execute("""INSERT INTO results(student_id,subject_id,ca,exam,total,grade,remark)
+                     VALUES(?,?,?,?,?,?,?)""",
+                  (request.form["student_id"], request.form["subject_id"], ca, exam, total, grade, remark))
+        conn.commit()
+    c.execute("SELECT * FROM students")
+    students = c.fetchall()
+    c.execute("SELECT * FROM subjects")
+    subjects = c.fetchall()
+    c.execute("""SELECT results.id, students.name, subjects.name, results.ca, results.exam,
+                        results.total, results.grade, results.remark
+                 FROM results
+                 JOIN students ON results.student_id=students.id
+                 JOIN subjects ON results.subject_id=subjects.id""")
+    results = c.fetchall()
+    conn.close()
+    form = "<h2>Results</h2><form method='post'>"
+    form += "Student:<select name='student_id'>" + "".join([f"<option value='{s[0]}'>{s[1]}</option>" for s in students]) + "</select>"
+    form += "Subject:<select name='subject_id'>" + "".join([f"<option value='{s[0]}'>{s[1]}</option>" for s in subjects]) + "</select>"
+    form += "CA:<input type='number' name='ca'> Exam:<input type='number' name='exam'>"
+    form += "<button class='btn'>Add</button></form>"
+    table = "<table><tr><th>ID</th><th>Student</th><th>Subject</th><th>CA</th><th>Exam</th><th>Total</th><th>Grade</th><th>Remark</th></tr>"
+    for r in results:
+        table += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td><td>{r[6]}</td><td>{r[7]}</td></tr>"
+    table += "</table>"
+    return render_template_string(html_template, content=form+table)
+
+@app.route("/reports")
+def reports():
+    student_id = request.args.get("student")
+    class_name = request.args.get("class")
+    conn = sqlite3.connect("school.db")
+    c = conn.cursor()
+    query = """SELECT students.name, students.class, subjects.name,
+                      results.ca, results.exam, results.total,
+                      results.grade, results.remark
+               FROM results
+               JOIN students ON results.student_id=students.id
+               JOIN subjects ON results.subject_id=subjects.id
+               WHERE 1=1"""
+    params = []
+    if student_id: query += " AND students.id=?"; params.append(student_id)
+    if class_name: query += " AND students.class=?"; params.append(class_name)
+    c.execute(query, params)
+    reports = c.fetchall()
+    scores = [r[5] for r in reports]
+    summary = f"<div class='summary'><h3>Summary</h3>Total Students:{len(set([r[0] for r in reports]))}<br>"
+    summary += f"Average:{(sum(scores)/len(scores)) if scores else 0:.2f}<br>"
+    summary += f"Highest:{max(scores) if scores else 0}<br>Lowest:{min(scores) if scores else 0}</div>"
+    conn.close()
+    table = "<h2>Reports</h2><table><tr><th>Student</th><th>Class</th><th>Subject</th><th>CA</th><th>Exam</th><th>Total</th><th>Grade</th><th>Remark</th></tr>"
+    for r in reports:
+        table += f"<tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td><td>{r[4]}</td><td>{r[5]}</td><td>{r[6]}</td><td>{r[7]}</td></tr>"
+    table += "</table><button class='btn print-btn' onclick='window.print()'>Print Report</button>"
+    return render_template_string(html_template, content=summary+table)
+
+@app.route("/errors")
+def errors():
+    return render_template_string(html_template, content="<h2>Error Codes</h2><p>Skew Protection Disabled<br>Cold Start Prevention Disabled</p>")
+
+if __name__ == "__main__":
+    app.run(debug=True)
